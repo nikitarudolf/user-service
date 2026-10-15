@@ -47,7 +47,7 @@ public class User extends BaseEntity {
             orphanRemoval = true)
     private List<PaymentCard> cards = new ArrayList<>();
 
-    public void addCard (PaymentCard card) {
+    public void addCard(PaymentCard card) {
         cards.add(card);
         card.setUser(this);
     }
