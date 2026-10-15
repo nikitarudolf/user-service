@@ -12,10 +12,13 @@ import com.innowise.user_service.repository.PaymentCardRepository;
 import com.innowise.user_service.repository.UserRepository;
 import com.innowise.user_service.repository.specification.PaymentCardSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.innowise.user_service.config.CacheConfig;
+import org.springframework.cache.Cache;
 
 import java.util.List;
 
@@ -29,6 +32,7 @@ public class PaymentCardService {
     private final PaymentCardRepository cardRepository;
     private final UserRepository userRepository;
     private final PaymentCardMapper cardMapper;
+    private final CacheManager cacheManager;
 
     @Transactional
     public PaymentCardResponse create(Long userId, PaymentCardRequest request) {
@@ -43,6 +47,7 @@ public class PaymentCardService {
         PaymentCard card = cardMapper.toEntity(request);
         user.addCard(card);
         userRepository.flush();
+        evictUserCache(userId);
         return cardMapper.toResponse(card);
     }
 
@@ -69,19 +74,32 @@ public class PaymentCardService {
             throw new ResourceAlreadyExistsException("Card with this number already exists");
         }
         cardMapper.updateEntity(request, card);
-        return cardMapper.toResponse(cardRepository.saveAndFlush(card));
+        PaymentCardResponse response = cardMapper.toResponse(cardRepository.saveAndFlush(card));
+        evictUserCache(card.getUser().getId());
+        return response;
     }
 
     @Transactional
     public void setActive(Long id, boolean active) {
-        if (cardRepository.updateActiveStatus(id, active) == 0) {
-            throw new ResourceNotFoundException("Card with id " + id + " not found");
-        }
+        PaymentCard card = findByIdOrThrow(id);
+        Long userId = card.getUser().getId();
+        cardRepository.updateActiveStatus(id, active);
+        evictUserCache(userId);
     }
 
     @Transactional
     public void delete(Long id) {
-        cardRepository.delete(findByIdOrThrow(id));
+        PaymentCard card = findByIdOrThrow(id);
+        Long userId = card.getUser().getId();
+        cardRepository.delete(card);
+        evictUserCache(userId);
+    }
+
+    private void evictUserCache(Long userId) {
+        Cache cache = cacheManager.getCache(CacheConfig.USERS_CACHE);
+        if (cache != null) {
+            cache.evict(userId);
+        }
     }
 
     private PaymentCard findByIdOrThrow(Long id) {

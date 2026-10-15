@@ -1,5 +1,6 @@
 package com.innowise.user_service.service;
 
+import com.innowise.user_service.config.CacheConfig;
 import com.innowise.user_service.dto.UserRequest;
 import com.innowise.user_service.dto.UserResponse;
 import com.innowise.user_service.entity.User;
@@ -9,6 +10,8 @@ import com.innowise.user_service.mapper.UserMapper;
 import com.innowise.user_service.repository.UserRepository;
 import com.innowise.user_service.repository.specification.UserSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ public class UserService {
         return userMapper.toResponse(userRepository.save(user));
     }
 
+    @Cacheable(cacheNames = CacheConfig.USERS_CACHE, key = "#id")
     public UserResponse getById(Long id) {
         User user = userRepository.findByIdWithCards(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User with id " + id + " not found"));
@@ -43,6 +47,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.USERS_CACHE, key = "#id")
     public UserResponse update(Long id, UserRequest request) {
         User user = findByIdOrThrow(id);
         if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
@@ -60,6 +65,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.USERS_CACHE, key = "#id")
     public void delete(Long id) {
         userRepository.delete(findByIdOrThrow(id));
     }
