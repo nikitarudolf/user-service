@@ -58,6 +58,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.USERS_CACHE, key = "#id")
     public void setActive(Long id, boolean active) {
         if (userRepository.updateActiveStatus(id, active) == 0) {
             throw new ResourceNotFoundException("User with id " + id + " not found");
