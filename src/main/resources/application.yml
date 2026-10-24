@@ -22,3 +22,6 @@ spring:
       port: ${REDIS_PORT}
   cache:
     type: redis
+
+jwt:
+  secret: ${JWT_SECRET}

@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-alter-users-table-column-id-drop-identity
+      author: nikita
+      dbms: postgresql
+      changes:
+        - sql: "ALTER TABLE users ALTER COLUMN id DROP IDENTITY"

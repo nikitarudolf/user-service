@@ -26,11 +26,15 @@ public class UserService {
     private final UserMapper userMapper;
 
     @Transactional
-    public UserResponse create(UserRequest request) {
+    public UserResponse create(Long id, UserRequest request) {
+        if (userRepository.existsById(id)) {
+            throw new ResourceAlreadyExistsException("User with id " + id + " already exists");
+        }
         if (userRepository.existsByEmail(request.email())) {
             throw new ResourceAlreadyExistsException("User with email " + request.email() + " already exists");
         }
         User user = userMapper.toEntity(request);
+        user.setId(id);
         return userMapper.toResponse(userRepository.save(user));
     }
 

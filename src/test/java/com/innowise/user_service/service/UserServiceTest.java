@@ -69,17 +69,26 @@ class UserServiceTest {
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toResponse(user)).thenReturn(response);
 
-        UserResponse result = userService.create(request);
+        UserResponse result = userService.create(1L, request);
 
         assertThat(result).isEqualTo(response);
         verify(userRepository).save(user);
     }
 
     @Test
+    void create_shouldThrow_whenProfileAlreadyExists() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.create(1L, request))
+                .isInstanceOf(ResourceAlreadyExistsException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void create_shouldThrow_whenEmailAlreadyExists() {
         when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.create(request))
+        assertThatThrownBy(() -> userService.create(1L, request))
                 .isInstanceOf(ResourceAlreadyExistsException.class);
         verify(userRepository, never()).save(any());
     }
