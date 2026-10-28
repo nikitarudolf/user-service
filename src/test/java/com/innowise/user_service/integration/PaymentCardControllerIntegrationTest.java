@@ -1,6 +1,7 @@
 package com.innowise.user_service.integration;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -16,17 +17,20 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void createCard_shouldReturn201AndEvictUserCache() throws Exception {
         Long userId = createUser("Ivan", "Petrov", "ivan@example.com");
-        mockMvc.perform(get("/api/v1/users/{id}", userId))
+        mockMvc.perform(get("/api/v1/users/{id}", userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE)))
                 .andExpect(jsonPath("$.cards.length()").value(0));
 
         mockMvc.perform(post("/api/v1/users/{userId}/cards", userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(cardRequest("4111111111111111"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.userId").value(userId));
 
-        mockMvc.perform(get("/api/v1/users/{id}", userId))
+        mockMvc.perform(get("/api/v1/users/{id}", userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE)))
                 .andExpect(jsonPath("$.cards.length()").value(1));
     }
 
@@ -38,6 +42,7 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
         }
 
         mockMvc.perform(post("/api/v1/users/{userId}/cards", userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(cardRequest("4000000000000006"))))
                 .andExpect(status().isConflict());
@@ -49,6 +54,7 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
         createCard(userId, "4111111111111111");
 
         mockMvc.perform(post("/api/v1/users/{userId}/cards", userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(cardRequest("4111111111111111"))))
                 .andExpect(status().isConflict());
@@ -57,6 +63,7 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void createCard_shouldReturn404_whenUserNotFound() throws Exception {
         mockMvc.perform(post("/api/v1/users/{userId}/cards", 999)
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(cardRequest("4111111111111111"))))
                 .andExpect(status().isNotFound());
@@ -67,6 +74,7 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
         Long userId = createUser("Ivan", "Petrov", "ivan@example.com");
 
         mockMvc.perform(post("/api/v1/users/{userId}/cards", userId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(cardRequest("abc"))))
                 .andExpect(status().isBadRequest())
@@ -80,18 +88,21 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
         createCard(ivan, "4111111111111111");
         createCard(anna, "5555555555554444");
 
-        mockMvc.perform(get("/api/v1/cards").param("surname", "petrov"))
+        mockMvc.perform(get("/api/v1/cards")
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer())
+                        .param("surname", "petrov"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].userId").value(ivan));
     }
 
     @Test
-    void updateCard_shouldReturnUpdatedCard() throws Exception {
+    void updateCard_shouldReturnUpdatedCard_whenOwner() throws Exception {
         Long userId = createUser("Ivan", "Petrov", "ivan@example.com");
         Long cardId = createCard(userId, "4111111111111111");
 
         mockMvc.perform(put("/api/v1/cards/{id}", cardId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"number\":\"4111111111111111\",\"holder\":\"I PETROV\",\"expirationDate\":\"2031-01-31\"}"))
                 .andExpect(status().isOk())
@@ -100,26 +111,30 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void deactivateCard_shouldChangeStatus() throws Exception {
+    void deactivateCard_shouldChangeStatus_whenOwner() throws Exception {
         Long userId = createUser("Ivan", "Petrov", "ivan@example.com");
         Long cardId = createCard(userId, "4111111111111111");
 
-        mockMvc.perform(patch("/api/v1/cards/{id}/deactivate", cardId))
+        mockMvc.perform(patch("/api/v1/cards/{id}/deactivate", cardId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE)))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/cards/{id}", cardId))
+        mockMvc.perform(get("/api/v1/cards/{id}", cardId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE)))
                 .andExpect(jsonPath("$.active").value(false));
     }
 
     @Test
-    void deleteCard_shouldReturn204AndRemoveCard() throws Exception {
+    void deleteCard_shouldReturn204AndRemoveCard_whenOwner() throws Exception {
         Long userId = createUser("Ivan", "Petrov", "ivan@example.com");
         Long cardId = createCard(userId, "4111111111111111");
 
-        mockMvc.perform(delete("/api/v1/cards/{id}", cardId))
+        mockMvc.perform(delete("/api/v1/cards/{id}", cardId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId, USER_ROLE)))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/cards/{id}", cardId))
+        mockMvc.perform(get("/api/v1/cards/{id}", cardId)
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer()))
                 .andExpect(status().isNotFound());
     }
 }

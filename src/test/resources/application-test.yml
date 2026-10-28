@@ -1,5 +1,3 @@
-# Values are overridden by @ServiceConnection (Testcontainers).
-# They exist only so placeholders from application.yml resolve without .env (e.g. in CI).
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/test
