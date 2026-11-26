@@ -74,6 +74,31 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getUserByEmail_shouldAllowOwnerAndAdmin() throws Exception {
+        String email = "ivan+orders@example.com";
+        Long id = createUser("Ivan", "Petrov", email);
+
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", email)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(id, USER_ROLE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id));
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", email)
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id));
+    }
+
+    @Test
+    void getUserByEmail_shouldHideAnotherUsersProfile() throws Exception {
+        String email = "ivan@example.com";
+        createUser("Ivan", "Petrov", email);
+
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", email)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(nextUserId(), USER_ROLE)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void getAllUsers_shouldFilterByNameAndPaginate() throws Exception {
         createUser("Ivan", "Petrov", "ivan@example.com");
         createUser("Anna", "Sidorova", "anna@example.com");
