@@ -50,6 +50,13 @@ public class UserService {
                 .map(userMapper::toResponse);
     }
 
+    public UserResponse getByEmail(String email, Long ownerId) {
+        User user = userRepository.findByEmail(email)
+                .filter(candidate -> ownerId == null || ownerId.equals(candidate.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return userMapper.toResponse(user);
+    }
+
     @Transactional
     @CacheEvict(cacheNames = CacheConfig.USERS_CACHE, key = "#id")
     public UserResponse update(Long id, UserRequest request) {

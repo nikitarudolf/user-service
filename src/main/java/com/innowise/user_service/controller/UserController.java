@@ -3,7 +3,10 @@ package com.innowise.user_service.controller;
 import com.innowise.user_service.dto.UserRequest;
 import com.innowise.user_service.dto.UserResponse;
 import com.innowise.user_service.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +43,14 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
     public ResponseEntity<UserResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getById(id));
+    }
+
+    @GetMapping("/by-email")
+    public ResponseEntity<UserResponse> getByEmail(@RequestParam @NotBlank @Email String email,
+                                                  @AuthenticationPrincipal Long userId,
+                                                  HttpServletRequest request) {
+        Long ownerId = request.isUserInRole("ADMIN") ? null : userId;
+        return ResponseEntity.ok(userService.getByEmail(email, ownerId));
     }
 
     @GetMapping
